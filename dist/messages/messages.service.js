@@ -16,10 +16,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MessagesService = void 0;
 const common_1 = require("@nestjs/common");
 const pg_1 = require("pg");
+const mail_service_1 = require("../mail/mail.service");
 let MessagesService = class MessagesService {
     pool;
-    constructor(pool) {
+    mailService;
+    constructor(pool, mailService) {
         this.pool = pool;
+        this.mailService = mailService;
     }
     async getConversations(userId) {
         const { rows } = await this.pool.query(`SELECT 
@@ -65,11 +68,12 @@ let MessagesService = class MessagesService {
         return { conversation, messages };
     }
     async startConversation(buyerId, productId, initialMessage) {
-        const { rows: products } = await this.pool.query('SELECT seller_id FROM products WHERE id = $1', [productId]);
+        const { rows: products } = await this.pool.query('SELECT seller_id, title FROM products WHERE id = $1', [productId]);
         if (products.length === 0) {
             throw new common_1.NotFoundException('Product not found');
         }
         const sellerId = products[0].seller_id;
+        const productTitle = products[0].title;
         if (sellerId === buyerId) {
             throw new common_1.ForbiddenException('Cannot message yourself');
         }
@@ -87,6 +91,11 @@ let MessagesService = class MessagesService {
         await this.pool.query(`INSERT INTO messages (conversation_id, sender_id, content)
             VALUES ($1, $2, $3)`, [conversationId, buyerId, initialMessage]);
         await this.pool.query('UPDATE conversations SET last_message_at = CURRENT_TIMESTAMP WHERE id = $1', [conversationId]);
+        const { rows: seller } = await this.pool.query('SELECT email, full_name FROM users WHERE id = $1', [sellerId]);
+        const { rows: buyer } = await this.pool.query('SELECT full_name FROM users WHERE id = $1', [buyerId]);
+        if (seller.length > 0 && buyer.length > 0) {
+            this.mailService.sendNewMessageNotification(seller[0].email, buyer[0].full_name, productTitle, initialMessage).catch(err => console.error('Failed to send email notification:', err));
+        }
         const { rows } = await this.pool.query(`SELECT c.*, p.title as product_title
             FROM conversations c
             JOIN products p ON c.product_id = p.id
@@ -94,7 +103,10 @@ let MessagesService = class MessagesService {
         return rows[0];
     }
     async sendMessage(conversationId, senderId, content) {
-        const { rows: convRows } = await this.pool.query('SELECT buyer_id, seller_id FROM conversations WHERE id = $1', [conversationId]);
+        const { rows: convRows } = await this.pool.query(`SELECT c.buyer_id, c.seller_id, p.title as product_title
+             FROM conversations c
+             JOIN products p ON c.product_id = p.id
+             WHERE c.id = $1`, [conversationId]);
         if (convRows.length === 0) {
             throw new common_1.NotFoundException('Conversation not found');
         }
@@ -106,6 +118,12 @@ let MessagesService = class MessagesService {
             VALUES ($1, $2, $3)
             RETURNING *`, [conversationId, senderId, content]);
         await this.pool.query('UPDATE conversations SET last_message_at = CURRENT_TIMESTAMP WHERE id = $1', [conversationId]);
+        const recipientId = conv.buyer_id === senderId ? conv.seller_id : conv.buyer_id;
+        const { rows: recipient } = await this.pool.query('SELECT email, full_name FROM users WHERE id = $1', [recipientId]);
+        const { rows: sender } = await this.pool.query('SELECT full_name FROM users WHERE id = $1', [senderId]);
+        if (recipient.length > 0 && sender.length > 0) {
+            this.mailService.sendNewMessageNotification(recipient[0].email, sender[0].full_name, conv.product_title, content).catch(err => console.error('Failed to send email notification:', err));
+        }
         return rows[0];
     }
     async markAsRead(conversationId, userId) {
@@ -127,6 +145,6 @@ exports.MessagesService = MessagesService;
 exports.MessagesService = MessagesService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)('DATABASE_CONNECTION')),
-    __metadata("design:paramtypes", [typeof (_a = typeof pg_1.Pool !== "undefined" && pg_1.Pool) === "function" ? _a : Object])
+    __metadata("design:paramtypes", [typeof (_a = typeof pg_1.Pool !== "undefined" && pg_1.Pool) === "function" ? _a : Object, mail_service_1.MailService])
 ], MessagesService);
 //# sourceMappingURL=messages.service.js.map

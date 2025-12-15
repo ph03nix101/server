@@ -51,12 +51,28 @@ const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const pg_1 = require("pg");
 const bcrypt = __importStar(require("bcrypt"));
+const mail_service_1 = require("../mail/mail.service");
 let AuthService = class AuthService {
     pool;
     jwtService;
-    constructor(pool, jwtService) {
+    mailService;
+    constructor(pool, jwtService, mailService) {
         this.pool = pool;
         this.jwtService = jwtService;
+        this.mailService = mailService;
+        this.ensureSchema();
+    }
+    async ensureSchema() {
+        await this.pool.query(`
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id SERIAL PRIMARY KEY,
+                user_id UUID REFERENCES users(id),
+                token TEXT NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                used BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
     }
     async register(data) {
         const existingUser = await this.pool.query('SELECT id FROM users WHERE email = $1 OR username = $2', [data.email, data.username]);
@@ -127,9 +143,7 @@ let AuthService = class AuthService {
         await this.pool.query('UPDATE password_reset_tokens SET used = TRUE WHERE user_id = $1 AND used = FALSE', [user.id]);
         await this.pool.query(`INSERT INTO password_reset_tokens (user_id, token, expires_at)
              VALUES ($1, $2, $3)`, [user.id, token, expiresAt]);
-        console.log(`\n🔑 Password Reset Token for ${email}:`);
-        console.log(`   Token: ${token}`);
-        console.log(`   Reset URL: http://localhost:3000/reset-password?token=${token}\n`);
+        await this.mailService.sendPasswordReset(email, token);
         return {
             message: 'If your email exists in our system, you will receive a password reset link.',
             token: process.env.NODE_ENV === 'development' ? token : undefined,
@@ -180,6 +194,7 @@ exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)('DATABASE_CONNECTION')),
-    __metadata("design:paramtypes", [typeof (_a = typeof pg_1.Pool !== "undefined" && pg_1.Pool) === "function" ? _a : Object, jwt_1.JwtService])
+    __metadata("design:paramtypes", [typeof (_a = typeof pg_1.Pool !== "undefined" && pg_1.Pool) === "function" ? _a : Object, jwt_1.JwtService,
+        mail_service_1.MailService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

@@ -1,5 +1,6 @@
 import { Injectable, Inject, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Pool } from 'pg';
+import { MailService } from '../mail/mail.service';
 
 export interface Conversation {
     id: string;
@@ -30,7 +31,10 @@ export interface Message {
 
 @Injectable()
 export class MessagesService {
-    constructor(@Inject('DATABASE_CONNECTION') private pool: Pool) { }
+    constructor(
+        @Inject('DATABASE_CONNECTION') private pool: Pool,
+        private mailService: MailService,
+    ) { }
 
     async getConversations(userId: string): Promise<Conversation[]> {
         const { rows } = await this.pool.query(
@@ -96,7 +100,7 @@ export class MessagesService {
     async startConversation(buyerId: string, productId: string, initialMessage: string): Promise<Conversation> {
         // Get product to find seller
         const { rows: products } = await this.pool.query(
-            'SELECT seller_id FROM products WHERE id = $1',
+            'SELECT seller_id, title FROM products WHERE id = $1',
             [productId]
         );
 
@@ -105,6 +109,7 @@ export class MessagesService {
         }
 
         const sellerId = products[0].seller_id;
+        const productTitle = products[0].title;
 
         if (sellerId === buyerId) {
             throw new ForbiddenException('Cannot message yourself');
@@ -144,6 +149,19 @@ export class MessagesService {
             [conversationId]
         );
 
+        // Send email notification to seller
+        const { rows: seller } = await this.pool.query('SELECT email, full_name FROM users WHERE id = $1', [sellerId]);
+        const { rows: buyer } = await this.pool.query('SELECT full_name FROM users WHERE id = $1', [buyerId]);
+
+        if (seller.length > 0 && buyer.length > 0) {
+            this.mailService.sendNewMessageNotification(
+                seller[0].email,
+                buyer[0].full_name,
+                productTitle,
+                initialMessage
+            ).catch(err => console.error('Failed to send email notification:', err));
+        }
+
         // Return the conversation
         const { rows } = await this.pool.query(
             `SELECT c.*, p.title as product_title
@@ -159,7 +177,10 @@ export class MessagesService {
     async sendMessage(conversationId: string, senderId: string, content: string): Promise<Message> {
         // Verify user is part of conversation
         const { rows: convRows } = await this.pool.query(
-            'SELECT buyer_id, seller_id FROM conversations WHERE id = $1',
+            `SELECT c.buyer_id, c.seller_id, p.title as product_title
+             FROM conversations c
+             JOIN products p ON c.product_id = p.id
+             WHERE c.id = $1`,
             [conversationId]
         );
 
@@ -185,6 +206,20 @@ export class MessagesService {
             'UPDATE conversations SET last_message_at = CURRENT_TIMESTAMP WHERE id = $1',
             [conversationId]
         );
+
+        // Send Email Notification
+        const recipientId = conv.buyer_id === senderId ? conv.seller_id : conv.buyer_id;
+        const { rows: recipient } = await this.pool.query('SELECT email, full_name FROM users WHERE id = $1', [recipientId]);
+        const { rows: sender } = await this.pool.query('SELECT full_name FROM users WHERE id = $1', [senderId]);
+
+        if (recipient.length > 0 && sender.length > 0) {
+            this.mailService.sendNewMessageNotification(
+                recipient[0].email, // Send to recipient
+                sender[0].full_name, // From sender
+                conv.product_title,
+                content
+            ).catch(err => console.error('Failed to send email notification:', err));
+        }
 
         return rows[0];
     }

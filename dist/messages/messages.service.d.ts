@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { MailService } from '../mail/mail.service';
 export interface Conversation {
     id: string;
     product_id: string;
@@ -25,7 +26,8 @@ export interface Message {
 }
 export declare class MessagesService {
     private pool;
-    constructor(pool: Pool);
+    private mailService;
+    constructor(pool: Pool, mailService: MailService);
     getConversations(userId: string): Promise<Conversation[]>;
     getConversation(conversationId: string, userId: string): Promise<{
         conversation: Conversation;

@@ -2,6 +2,7 @@ import { Injectable, Inject, ConflictException, UnauthorizedException } from '@n
 import { JwtService } from '@nestjs/jwt';
 import { Pool } from 'pg';
 import * as bcrypt from 'bcrypt';
+import { MailService } from '../mail/mail.service';
 
 export interface UserPayload {
     id: string;
@@ -14,7 +15,23 @@ export class AuthService {
     constructor(
         @Inject('DATABASE_CONNECTION') private pool: Pool,
         private jwtService: JwtService,
-    ) { }
+        private mailService: MailService,
+    ) {
+        this.ensureSchema();
+    }
+
+    private async ensureSchema() {
+        await this.pool.query(`
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id SERIAL PRIMARY KEY,
+                user_id UUID REFERENCES users(id),
+                token TEXT NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                used BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+    }
 
     async register(data: {
         email: string;
@@ -148,14 +165,12 @@ export class AuthService {
             [user.id, token, expiresAt]
         );
 
-        // In production, send email with reset link
-        // For development, log the token
-        console.log(`\n🔑 Password Reset Token for ${email}:`);
-        console.log(`   Token: ${token}`);
-        console.log(`   Reset URL: http://localhost:3000/reset-password?token=${token}\n`);
+        // Send email with reset link
+        await this.mailService.sendPasswordReset(email, token);
 
         return {
             message: 'If your email exists in our system, you will receive a password reset link.',
+            // Return token only in development for easier testing if needed
             token: process.env.NODE_ENV === 'development' ? token : undefined,
         };
     }

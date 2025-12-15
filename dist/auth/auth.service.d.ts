@@ -1,5 +1,6 @@
 import { JwtService } from '@nestjs/jwt';
 import { Pool } from 'pg';
+import { MailService } from '../mail/mail.service';
 export interface UserPayload {
     id: string;
     email: string;
@@ -8,7 +9,9 @@ export interface UserPayload {
 export declare class AuthService {
     private pool;
     private jwtService;
-    constructor(pool: Pool, jwtService: JwtService);
+    private mailService;
+    constructor(pool: Pool, jwtService: JwtService, mailService: MailService);
+    private ensureSchema;
     register(data: {
         email: string;
         username: string;
