@@ -1,31 +1,22 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { RatingsService, SellerRating, SellerStats } from './ratings.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-// Simple auth guard that checks for user in request
-class AuthGuard {
-    canActivate(context: any): boolean {
-        const request = context.switchToHttp().getRequest();
-        return !!request.user;
-    }
-}
-
-interface AuthenticatedRequest {
-    user: { id: string };
-}
-
-@Controller('ratings')
+@Controller('api/ratings')
 export class RatingsController {
     constructor(private readonly ratingsService: RatingsService) { }
 
     @Post()
-    @UseGuards(AuthGuard)
+    @UseGuards(JwtAuthGuard)
     async create(
-        @Req() req: AuthenticatedRequest,
+        @Req() req: Request,
         @Body() body: { seller_id: string; rating: number; review?: string; product_id?: string }
     ): Promise<SellerRating> {
+        const user = req.user as { id: string };
         return this.ratingsService.create(
             body.seller_id,
-            req.user.id,
+            user.id,
             body.rating,
             body.review,
             body.product_id
@@ -51,23 +42,25 @@ export class RatingsController {
     }
 
     @Get('seller/:sellerId/can-rate')
-    @UseGuards(AuthGuard)
+    @UseGuards(JwtAuthGuard)
     async canRate(
-        @Req() req: AuthenticatedRequest,
+        @Req() req: Request,
         @Param('sellerId') sellerId: string
     ): Promise<{ canRate: boolean }> {
-        const canRate = await this.ratingsService.canRate(req.user.id, sellerId);
+        const user = req.user as { id: string };
+        const canRate = await this.ratingsService.canRate(user.id, sellerId);
         return { canRate };
     }
 
     @Get('seller/:sellerId/my-rating')
-    @UseGuards(AuthGuard)
+    @UseGuards(JwtAuthGuard)
     async getMyRating(
-        @Req() req: AuthenticatedRequest,
+        @Req() req: Request,
         @Param('sellerId') sellerId: string,
         @Query('product_id') productId?: string
     ): Promise<{ rating: SellerRating | null }> {
-        const rating = await this.ratingsService.getMyRatingForSeller(req.user.id, sellerId, productId);
+        const user = req.user as { id: string };
+        const rating = await this.ratingsService.getMyRatingForSeller(user.id, sellerId, productId);
         return { rating };
     }
 
@@ -77,22 +70,24 @@ export class RatingsController {
     }
 
     @Patch(':id')
-    @UseGuards(AuthGuard)
+    @UseGuards(JwtAuthGuard)
     async update(
-        @Req() req: AuthenticatedRequest,
+        @Req() req: Request,
         @Param('id') id: string,
         @Body() body: { rating: number; review?: string }
     ): Promise<SellerRating> {
-        return this.ratingsService.update(id, req.user.id, body.rating, body.review);
+        const user = req.user as { id: string };
+        return this.ratingsService.update(id, user.id, body.rating, body.review);
     }
 
     @Delete(':id')
-    @UseGuards(AuthGuard)
+    @UseGuards(JwtAuthGuard)
     async delete(
-        @Req() req: AuthenticatedRequest,
+        @Req() req: Request,
         @Param('id') id: string
     ): Promise<{ message: string }> {
-        await this.ratingsService.delete(id, req.user.id);
+        const user = req.user as { id: string };
+        await this.ratingsService.delete(id, user.id);
         return { message: 'Rating deleted successfully' };
     }
 }

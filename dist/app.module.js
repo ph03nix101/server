@@ -23,6 +23,9 @@ const messages_module_1 = require("./messages/messages.module");
 const wishlist_module_1 = require("./wishlist/wishlist.module");
 const reports_module_1 = require("./reports/reports.module");
 const auctions_module_1 = require("./auctions/auctions.module");
+const ratings_module_1 = require("./ratings/ratings.module");
+const shipping_module_1 = require("./shipping/shipping.module");
+const orders_module_1 = require("./orders/orders.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -46,6 +49,9 @@ exports.AppModule = AppModule = __decorate([
             wishlist_module_1.WishlistModule,
             reports_module_1.ReportsModule,
             auctions_module_1.AuctionsModule,
+            ratings_module_1.RatingsModule,
+            shipping_module_1.ShippingModule,
+            orders_module_1.OrdersModule,
         ],
     })
 ], AppModule);
