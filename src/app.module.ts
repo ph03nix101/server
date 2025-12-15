@@ -17,6 +17,7 @@ import { AuctionsModule } from './auctions/auctions.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { OrdersModule } from './orders/orders.module';
+import { AdminCategoriesModule } from './admin/categories/admin-categories.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { OrdersModule } from './orders/orders.module';
     RatingsModule,
     ShippingModule,
     OrdersModule,
+    AdminCategoriesModule,
   ],
 })
 export class AppModule { }

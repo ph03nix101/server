@@ -26,6 +26,7 @@ const auctions_module_1 = require("./auctions/auctions.module");
 const ratings_module_1 = require("./ratings/ratings.module");
 const shipping_module_1 = require("./shipping/shipping.module");
 const orders_module_1 = require("./orders/orders.module");
+const admin_categories_module_1 = require("./admin/categories/admin-categories.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -52,6 +53,7 @@ exports.AppModule = AppModule = __decorate([
             ratings_module_1.RatingsModule,
             shipping_module_1.ShippingModule,
             orders_module_1.OrdersModule,
+            admin_categories_module_1.AdminCategoriesModule,
         ],
     })
 ], AppModule);
