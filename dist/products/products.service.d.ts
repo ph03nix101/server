@@ -4,7 +4,10 @@ import { CreateProductDto } from './dto/create-product.dto';
 export declare class ProductsService {
     private pool;
     constructor(pool: Pool);
-    create(dto: CreateProductDto): Promise<Product>;
+    private ensureSchema;
+    create(dto: CreateProductDto & {
+        original_price?: number;
+    }): Promise<Product>;
     findAll(filters?: {
         q?: string;
         category_id?: number;
@@ -24,7 +27,9 @@ export declare class ProductsService {
     findById(id: string): Promise<Product>;
     findBySeller(sellerId: string): Promise<Product[]>;
     updateStatus(id: string, status: string): Promise<Product>;
-    update(id: string, updates: Partial<CreateProductDto>): Promise<Product>;
+    update(id: string, updates: Partial<CreateProductDto> & {
+        original_price?: number;
+    }): Promise<Product>;
     delete(id: string): Promise<void>;
     findSimilar(productId: string, limit?: number): Promise<Product[]>;
     getTrending(limit?: number): Promise<Product[]>;

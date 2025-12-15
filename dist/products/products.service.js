@@ -20,18 +20,30 @@ let ProductsService = class ProductsService {
     pool;
     constructor(pool) {
         this.pool = pool;
+        this.ensureSchema();
+    }
+    async ensureSchema() {
+        await this.pool.query(`
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'original_price') THEN 
+                    ALTER TABLE products ADD COLUMN original_price DECIMAL(10,2); 
+                END IF;
+            END $$;
+        `);
     }
     async create(dto) {
         const slug = this.generateSlug(dto.title);
         const { rows } = await this.pool.query(`INSERT INTO products 
-       (seller_id, category_id, title, slug, price, description, condition, specs, cpu_ref_id, gpu_ref_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       (seller_id, category_id, title, slug, price, original_price, description, condition, specs, cpu_ref_id, gpu_ref_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`, [
             dto.seller_id,
             dto.category_id,
             dto.title,
             slug,
             dto.price,
+            dto.original_price,
             dto.description,
             dto.condition,
             JSON.stringify(dto.specs),
@@ -167,14 +179,16 @@ let ProductsService = class ProductsService {
                 description = COALESCE($3, description),
                 condition = COALESCE($4, condition),
                 specs = COALESCE($5, specs),
+                original_price = COALESCE($6, original_price),
                 updated_at = NOW()
-       WHERE id = $6
+       WHERE id = $7
             RETURNING * `, [
             updates.title,
             updates.price,
             updates.description,
             updates.condition,
             updates.specs ? JSON.stringify(updates.specs) : null,
+            updates.original_price,
             id,
         ]);
         return rows[0];

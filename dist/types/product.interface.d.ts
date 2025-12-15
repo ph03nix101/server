@@ -5,6 +5,7 @@ export interface Product {
     title: string;
     slug?: string;
     price: number;
+    original_price?: number;
     description?: string;
     condition: 'New' | 'Open Box' | 'Used - Like New' | 'Used - Good' | 'Used - Fair' | 'For Parts';
     specs: Record<string, any>;
