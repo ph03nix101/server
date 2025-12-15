@@ -8,6 +8,7 @@ export interface Product {
     original_price?: number;
     description?: string;
     condition: 'New' | 'Open Box' | 'Used - Like New' | 'Used - Good' | 'Used - Fair' | 'For Parts';
+    condition_description?: string;
     specs: Record<string, any>;
     cpu_ref_id?: number;
     gpu_ref_id?: number;

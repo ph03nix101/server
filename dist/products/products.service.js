@@ -29,14 +29,17 @@ let ProductsService = class ProductsService {
                 IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'original_price') THEN 
                     ALTER TABLE products ADD COLUMN original_price DECIMAL(10,2); 
                 END IF;
+                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'condition_description') THEN 
+                    ALTER TABLE products ADD COLUMN condition_description TEXT; 
+                END IF;
             END $$;
         `);
     }
     async create(dto) {
         const slug = this.generateSlug(dto.title);
         const { rows } = await this.pool.query(`INSERT INTO products 
-       (seller_id, category_id, title, slug, price, original_price, description, condition, specs, cpu_ref_id, gpu_ref_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       (seller_id, category_id, title, slug, price, original_price, description, condition, condition_description, specs, cpu_ref_id, gpu_ref_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`, [
             dto.seller_id,
             dto.category_id,
@@ -46,6 +49,7 @@ let ProductsService = class ProductsService {
             dto.original_price,
             dto.description,
             dto.condition,
+            dto.condition_description,
             JSON.stringify(dto.specs),
             dto.cpu_ref_id,
             dto.gpu_ref_id,
@@ -180,8 +184,9 @@ let ProductsService = class ProductsService {
                 condition = COALESCE($4, condition),
                 specs = COALESCE($5, specs),
                 original_price = COALESCE($6, original_price),
+                condition_description = COALESCE($7, condition_description),
                 updated_at = NOW()
-       WHERE id = $7
+       WHERE id = $8
             RETURNING * `, [
             updates.title,
             updates.price,
@@ -189,6 +194,7 @@ let ProductsService = class ProductsService {
             updates.condition,
             updates.specs ? JSON.stringify(updates.specs) : null,
             updates.original_price,
+            updates.condition_description,
             id,
         ]);
         return rows[0];

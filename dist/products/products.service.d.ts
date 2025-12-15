@@ -7,6 +7,7 @@ export declare class ProductsService {
     private ensureSchema;
     create(dto: CreateProductDto & {
         original_price?: number;
+        condition_description?: string;
     }): Promise<Product>;
     findAll(filters?: {
         q?: string;
@@ -29,6 +30,7 @@ export declare class ProductsService {
     updateStatus(id: string, status: string): Promise<Product>;
     update(id: string, updates: Partial<CreateProductDto> & {
         original_price?: number;
+        condition_description?: string;
     }): Promise<Product>;
     delete(id: string): Promise<void>;
     findSimilar(productId: string, limit?: number): Promise<Product[]>;
