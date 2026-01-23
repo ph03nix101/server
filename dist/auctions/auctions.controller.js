@@ -22,6 +22,7 @@ let AuctionsController = class AuctionsController {
         this.auctionsService = auctionsService;
     }
     create(dto, req) {
+        console.log('Creating auction:', dto);
         const user = req.user;
         return this.auctionsService.create(dto, user.id);
     }

@@ -25,11 +25,27 @@ export interface Bid {
     created_at: string;
 }
 
+import { IsString, IsNumber, IsOptional, IsUUID, Min, IsEnum } from 'class-validator';
+
 export class CreateAuctionDto {
+    @IsUUID()
     product_id: string;
+
+    @IsNumber()
+    @Min(0)
     starting_price: number;
+
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
     reserve_price?: number;
+
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
     buy_now_price?: number;
+
+    @IsNumber()
     duration_hours: number; // 24, 72, 168 (1, 3, 7 days)
 }
 
@@ -177,7 +193,16 @@ export class AuctionsService {
 
     async getActiveAuctions(limit: number = 10, categoryId?: number): Promise<Auction[]> {
         let query = `
-            SELECT a.*, row_to_json(p) as product
+            SELECT 
+                a.*, 
+                row_to_json(p) as product,
+                (
+                    SELECT url 
+                    FROM product_images pi 
+                    WHERE pi.product_id = p.id 
+                    ORDER BY pi.is_primary DESC 
+                    LIMIT 1
+                ) as image_url
             FROM auctions a
             JOIN products p ON a.product_id = p.id
             WHERE a.status = 'active' AND a.end_time > NOW()

@@ -16,6 +16,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuctionsService = exports.CreateAuctionDto = void 0;
 const common_1 = require("@nestjs/common");
 const pg_1 = require("pg");
+const class_validator_1 = require("class-validator");
 class CreateAuctionDto {
     product_id;
     starting_price;
@@ -24,6 +25,31 @@ class CreateAuctionDto {
     duration_hours;
 }
 exports.CreateAuctionDto = CreateAuctionDto;
+__decorate([
+    (0, class_validator_1.IsUUID)(),
+    __metadata("design:type", String)
+], CreateAuctionDto.prototype, "product_id", void 0);
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], CreateAuctionDto.prototype, "starting_price", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], CreateAuctionDto.prototype, "reserve_price", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], CreateAuctionDto.prototype, "buy_now_price", void 0);
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    __metadata("design:type", Number)
+], CreateAuctionDto.prototype, "duration_hours", void 0);
 let AuctionsService = class AuctionsService {
     pool;
     MIN_BID_INCREMENT = 50;
@@ -103,7 +129,16 @@ let AuctionsService = class AuctionsService {
     }
     async getActiveAuctions(limit = 10, categoryId) {
         let query = `
-            SELECT a.*, row_to_json(p) as product
+            SELECT 
+                a.*, 
+                row_to_json(p) as product,
+                (
+                    SELECT url 
+                    FROM product_images pi 
+                    WHERE pi.product_id = p.id 
+                    ORDER BY pi.is_primary DESC 
+                    LIMIT 1
+                ) as image_url
             FROM auctions a
             JOIN products p ON a.product_id = p.id
             WHERE a.status = 'active' AND a.end_time > NOW()

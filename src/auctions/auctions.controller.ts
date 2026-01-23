@@ -11,6 +11,7 @@ export class AuctionsController {
     @UseGuards(JwtAuthGuard)
     @HttpCode(HttpStatus.CREATED)
     create(@Body() dto: CreateAuctionDto, @Req() req: Request) {
+        console.log('Creating auction:', dto);
         const user = req.user as { id: string };
         return this.auctionsService.create(dto, user.id);
     }
